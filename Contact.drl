@@ -1,0 +1,68 @@
+package rules
+
+import com.auphelia.models.Contact;
+import com.auphelia.rules.DroolsMessage;
+import java.util.Collection;
+
+rule "FormatCodePostal"
+	salience 2
+	agenda-group "format"
+    when
+        $contact : Contact(codePostal contains " " || codePostal contains "-" || codePostal matches ".*[a-z].*")
+    then
+    	System.out.println("FormatCodePostal");
+       	insert(DroolsMessage.warning().message("Retrait automatique des tirets et espaces du code postal.").field("codePostal").rule(kcontext));
+       	modify($contact) {
+       		setCodePostal($contact.getCodePostal().replaceAll("\\s","")),
+       		setCodePostal($contact.getCodePostal().replaceAll("-","")),
+       		setCodePostal($contact.getCodePostal().toUpperCase())
+   		}
+end
+
+rule "StEnSaint"
+	salience 2
+	agenda-group "format"
+	when
+		$contact : Contact(ville matches "^[sS]t-.*" || ville matches "^[sS]te-.*")
+	then
+		System.out.println("StEnSaint");
+		insert(DroolsMessage.info().message("Traduction de St(e)- en Saint(e)-").field("ville").rule(kcontext));
+		modify($contact) {
+			setVille($contact.getVille().replaceFirst("^[sS]t", "Saint"))
+		}
+end
+
+rule "CodePostal"
+	salience 1
+	agenda-group "validation"
+	auto-focus
+    when
+        $contact : Contact(codePostal.toUpperCase() not matches "^[ABCEGHJKLMNPRSTVXY]{1}\\d{1}[A-Z]{1} *\\d{1}[A-Z]{1}\\d{1}$")
+    then
+    	System.out.println("CodePostal");
+       	insert(DroolsMessage.error().message("Mauvais code postal.").rule(kcontext).field("codePostal"));
+end
+
+rule "Email"
+	salience 1
+	agenda-group "validation"
+	auto-focus
+	when
+		$contact : Contact(email not matches "(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])")
+	then
+		System.out.println("Email");
+		insert(DroolsMessage.error().message("Mauvais email.").rule(kcontext).field("email"));
+end
+
+rule "Province"
+	salience 1
+	agenda-group "validation"
+	auto-focus
+	when
+		//contact : Contact(province not in ("Québec", "Ontario", "Colombie-Britannique"))
+		$contact : Contact()
+		$nomsProvinces : Collection(this not contains $contact.province)
+	then
+		System.out.println("Province");
+		insert(DroolsMessage.error().message("Mauvaise province.").rule(kcontext).field("province"));
+end
