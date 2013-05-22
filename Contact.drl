@@ -11,7 +11,7 @@ rule "CodePostalObligatoire"
 	when
 		$contact : Contact(codePostal == "")
 	then
-		System.out.println("CodePostalObligatoire");
+		//System.out.println("CodePostalObligatoire");
 		insert(DroolsMessage.error().message("Le code postal est obligatoire.").field("code_postal").rule(kcontext));
 end
 
@@ -22,7 +22,7 @@ rule "EmailObligatoire"
 	when
 		$contact : Contact(email == "")
 	then
-		System.out.println("EmailObligatoire");
+		//System.out.println("EmailObligatoire");
 		insert(DroolsMessage.error().message("Le email est obligatoire.").field("email").rule(kcontext));
 end
 
@@ -32,7 +32,7 @@ rule "FormatCodePostal"
     when
         $contact : Contact(codePostal contains " " || codePostal contains "-" || codePostal matches ".*[a-z].*")
     then
-    	System.out.println("FormatCodePostal");
+    	//System.out.println("FormatCodePostal");
        	insert(DroolsMessage.warning().message("Retrait automatique des tirets et espaces du code postal.").field("code_postal").rule(kcontext));
        	modify($contact) {
        		setCodePostal($contact.getCodePostal().replaceAll("\\s","")),
@@ -47,7 +47,7 @@ rule "StEnSaint"
 	when
 		$contact : Contact(ville matches "^[sS]t-.*" || ville matches "^[sS]te-.*")
 	then
-		System.out.println("StEnSaint");
+		//System.out.println("StEnSaint");
 		insert(DroolsMessage.info().message("Traduction de St(e) en Saint(e).").field("ville").rule(kcontext));
 		modify($contact) {
 			setVille($contact.getVille().replaceFirst("^[sS]t", "Saint"))
@@ -62,7 +62,7 @@ rule "CodePostal"
     when
         $contact : Contact(codePostal.toUpperCase() not matches "^[ABCEGHJKLMNPRSTVXY]{1}\\d{1}[A-Z]{1} *\\d{1}[A-Z]{1}\\d{1}$")
     then
-    	System.out.println("CodePostal");
+    	//System.out.println("CodePostal");
        	insert(DroolsMessage.error().message("Mauvais code postal.").rule(kcontext).field("code_postal"));
 end
 
@@ -74,7 +74,7 @@ rule "Email"
 	when
 		$contact : Contact(email not matches "(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])")
 	then
-		System.out.println("Email");
+		//System.out.println("Email");
 		insert(DroolsMessage.error().message("Mauvais email.").rule(kcontext).field("email"));
 end
 
@@ -87,6 +87,50 @@ rule "Province"
 		//$contact : Contact()
 		//$nomsProvinces : Collection(this not contains $contact.province)
 	then
-		System.out.println("Province");
+		//System.out.println("Province");
 		insert(DroolsMessage.error().message("Mauvaise province.").rule(kcontext).field("province"));
+end
+
+rule "FormatProvinceQuebec"
+	salience 1
+	agenda-group "province"
+	auto-focus
+	when
+		$contact : Contact(province matches "[qQ][uU][eEéÉ][bB][eE][cC]" && province != "Québec")
+	then
+		//System.out.println("FormatProvinceQuebec");
+		insert(DroolsMessage.info().message("Correction de l'ortographe de la province.").rule(kcontext).field("province"));
+		modify($contact) {
+			setProvince("Québec")
+		}
+end
+
+rule "FormatProvinceOntario"
+	salience 1
+	agenda-group "province"
+	no-loop
+	auto-focus
+	when
+		$contact : Contact(province.toLowerCase() == ("ontario"))
+	then
+		//System.out.println("FormatProvinceOntario");
+		insert(DroolsMessage.info().message("Correction de l'ortographe de la province.").rule(kcontext).field("province"));
+		modify($contact) {
+			setProvince("Ontario")
+		}
+end
+
+rule "FormatProvinceColombieBritannique"
+	salience 1
+	agenda-group "province"
+	no-loop
+	auto-focus
+	when
+		$contact : Contact(province.toLowerCase() == "colombie britannique" || province.toLowerCase() == "colombie-britannique")
+	then
+		//System.out.println("FormatProvinceColombieBritannique");
+		insert(DroolsMessage.info().message("Correction de l'ortographe de la province.").rule(kcontext).field("province"));
+		modify($contact) {
+			setProvince("Colombie-Britannique")
+		}
 end
